@@ -10,7 +10,9 @@ import { Resend } from "resend";
 async function startServer() {
   const app = express();
   const PORT = 3000;
-  const resend = new Resend(process.env.RESEND_API_KEY);
+  
+  const resendApiKey = process.env.RESEND_API_KEY;
+  const resend = resendApiKey ? new Resend(resendApiKey) : null;
 
   app.use(express.json());
   app.use(cookieParser());
@@ -149,7 +151,7 @@ async function startServer() {
       if (dbError) throw dbError;
 
       // 2. Send Email Notification
-      if (process.env.RESEND_API_KEY) {
+      if (resend) {
         await resend.emails.send({
           from: 'SoulSound <support@soulsound.in>',
           to: 'support@soulsound.in',
@@ -219,6 +221,11 @@ Sitemap: https://soulsound.in/sitemap.xml`);
     if (req.path === "/admin/login") return next();
     
     const supabase = supabaseServer({ req, res });
+    if (!supabase) {
+      console.warn("Supabase not configured. Admin access disabled.");
+      return res.status(500).send("Admin access disabled: Supabase not configured.");
+    }
+
     const { data: { session } } = await supabase.auth.getSession();
     
     if (!session) {
